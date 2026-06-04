@@ -17,7 +17,7 @@ app.use(express.json());
 const pool = new Pool({
     connectionString: process.env.DATABASE_URL,
     ssl: {
-        rejectUnauthorized: false // Neon DB এর জন্য এটি বাধ্যতামূলক
+        rejectUnauthorized: false 
     }
 });
 
@@ -33,12 +33,11 @@ app.post("/connections", async (req, res) => {
         const { sender_id, receiver_id } = req.body;
 
         if (!sender_id || !receiver_id) {
-            return res.status(400).json({ success: false, message: "sender_id এবং receiver_id লাগবে" });
+            return res.status(400).json({ success: false, message: "sender_id and receiver_id required" });
         }
 
-        // নিজের কাছে request পাঠানো যাবে না
         if (sender_id.toLowerCase() === receiver_id.toLowerCase()) {
-            return res.status(400).json({ success: false, message: "নিজেকে request পাঠানো যাবে না" });
+            return res.status(400).json({ success: false, message: "cannot send request to yourself" });
         }
 
         // আগেই request আছে কিনা চেক করা (A->B or B->A)
@@ -49,7 +48,7 @@ app.post("/connections", async (req, res) => {
         );
 
         if (existing.rows.length > 0) {
-            return res.status(400).json({ success: false, message: "আগেই connection আছে বা request পাঠানো হয়েছে" });
+            return res.status(400).json({ success: false, message: "request has been sent ago" });
         }
 
         // নতুন রিকোয়েস্ট ইনসার্ট করা
@@ -100,7 +99,7 @@ app.put("/connections/:id", async (req, res) => {
         );
 
         if (result.rowCount === 0) {
-            return res.status(404).json({ success: false, message: "Request পাওয়া যায়নি" });
+            return res.status(404).json({ success: false, message: "No connection request" });
         }
 
         res.json({ success: true, message: "Request Accepted Successfully" });
@@ -123,7 +122,7 @@ app.delete("/connections/:id", async (req, res) => {
         );
 
         if (result.rowCount === 0) {
-            return res.status(404).json({ success: false, message: "Request পাওয়া যায়নি" });
+            return res.status(404).json({ success: false, message: "Request has not been found" });
         }
 
         res.json({ success: true, message: "Request Denied and Deleted" });
