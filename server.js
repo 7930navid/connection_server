@@ -1,0 +1,142 @@
+require("dotenv").config();
+const express = require("express");
+const cors = require("cors");
+const { Pool } = require("pg");
+
+const app = express();
+
+// =========================
+// MIDDLEWARES
+// =========================
+app.use(cors());
+app.use(express.json());
+
+// =========================
+// DATABASE CONNECTION (Neon DB)
+// =========================
+const pool = new Pool({
+    connectionString: process.env.DATABASE_URL,
+    ssl: {
+        rejectUnauthorized: false // Neon DB এর জন্য এটি বাধ্যতামূলক
+    }
+});
+
+pool.connect()
+    .then(() => console.log("✅ Neon Database Connected Successfully!"))
+    .catch((err) => console.error("❌ DB Connection Error:", err.message));
+
+// =========================
+// 1. SEND REQUEST (Connect)
+// =========================
+app.post("/connections", async (req, res) => {
+    try {
+        const { sender_id, receiver_id } = req.body;
+
+        if (!sender_id || !receiver_id) {
+            return res.status(400).json({ success: false, message: "sender_id এবং receiver_id লাগবে" });
+        }
+
+        // নিজের কাছে request পাঠানো যাবে না
+        if (sender_id.toLowerCase() === receiver_id.toLowerCase()) {
+            return res.status(400).json({ success: false, message: "নিজেকে request পাঠানো যাবে না" });
+        }
+
+        // আগেই request আছে কিনা চেক করা (A->B or B->A)
+        const existing = await pool.query(
+            `SELECT * FROM connections WHERE 
+            (sender_id=$1 AND receiver_id=$2) OR (sender_id=$2 AND receiver_id=$1)`,
+            [sender_id, receiver_id]
+        );
+
+        if (existing.rows.length > 0) {
+            return res.status(400).json({ success: false, message: "আগেই connection আছে বা request পাঠানো হয়েছে" });
+        }
+
+        // নতুন রিকোয়েস্ট ইনসার্ট করা
+        await pool.query(
+            `INSERT INTO connections (sender_id, receiver_id) VALUES ($1, $2)`,
+            [sender_id, receiver_id]
+        );
+
+        res.json({ success: true, message: "Connection Request Sent" });
+
+    } catch (err) {
+        res.status(500).json({ success: false, error: err.message });
+    }
+});
+
+// =========================
+// 2. FETCH PENDING REQUESTS
+// =========================
+app.get("/connections/:email", async (req, res) => {
+    try {
+        const email = req.params.email;
+
+        // শুধু pending রিকোয়েস্টগুলো ফেচ করবে
+        const result = await pool.query(
+            `SELECT * FROM connections 
+            WHERE receiver_id = $1 AND status = 'pending'`,
+            [email]
+        );
+
+        res.json({ success: true, data: result.rows });
+
+    } catch (err) {
+        res.status(500).json({ success: false, error: err.message });
+    }
+});
+
+// =========================
+// 3. ACCEPT REQUEST
+// =========================
+app.put("/connections/:id", async (req, res) => {
+    try {
+        const id = req.params.id;
+
+        const result = await pool.query(
+            `UPDATE connections SET status = 'accepted' 
+            WHERE id = $1 RETURNING *`,
+            [id]
+        );
+
+        if (result.rowCount === 0) {
+            return res.status(404).json({ success: false, message: "Request পাওয়া যায়নি" });
+        }
+
+        res.json({ success: true, message: "Request Accepted Successfully" });
+
+    } catch (err) {
+        res.status(500).json({ success: false, error: err.message });
+    }
+});
+
+// =========================
+// 4. DENY / DELETE REQUEST
+// =========================
+app.delete("/connections/:id", async (req, res) => {
+    try {
+        const id = req.params.id;
+
+        const result = await pool.query(
+            `DELETE FROM connections WHERE id = $1 RETURNING *`,
+            [id]
+        );
+
+        if (result.rowCount === 0) {
+            return res.status(404).json({ success: false, message: "Request পাওয়া যায়নি" });
+        }
+
+        res.json({ success: true, message: "Request Denied and Deleted" });
+
+    } catch (err) {
+        res.status(500).json({ success: false, error: err.message });
+    }
+});
+
+// =========================
+// SERVER START
+// =========================
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => {
+    console.log(`🚀 AsirNet Server is running on port ${PORT}`);
+});
