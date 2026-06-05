@@ -14,11 +14,20 @@ app.use(express.json());
 // =========================
 // DATABASE CONNECTION (Neon DB)
 // =========================
+// আপনার আগের কোড...
 const pool = new Pool({
     connectionString: process.env.DATABASE_URL,
     ssl: {
-        rejectUnauthorized: false 
+        rejectUnauthorized: false
     }
+});
+
+// ==========================================
+// FIX: Neon DB ঘুমালে যেন সার্ভার ক্র্যাশ না করে
+// ==========================================
+pool.on('error', (err, client) => {
+    console.error('⚠️ Neon DB idle connection error:', err.message);
+   
 });
 
 pool.connect()
