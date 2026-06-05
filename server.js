@@ -141,6 +141,32 @@ app.delete("/connections/:id", async (req, res) => {
     }
 });
 
+//GET ℹ️ℹ️ FRIENDS TO BROWSER
+
+app.get("/friends/:email", async (req, res) => {
+        try{
+           const email = req.params.email;
+
+           const result = await pool.query(`
+                SELECT * FROM connections WHERE receiver_id = $1 AND status = 'accepted'` , [email]
+
+                );
+           res.json({
+                success: true,
+                data: result.rows
+                });
+        } catch(err) {
+        console.error(err);
+        res.status(500).json({
+                success: false,
+                message: 'Server error'
+                });
+        }
+
+});
+
+
+
 // =========================
 // SERVER START
 // =========================
