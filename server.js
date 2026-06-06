@@ -46,32 +46,28 @@ app.post("/connections", async (req, res) => {
         }
 
         if (sender_id.toLowerCase() === receiver_id.toLowerCase()) {
-            return res.status(400).json({ success: false, message: "It' your ID, Cannot send request to yourself" });
+            return res.status(400).json({ success: false, message: "It's your ID, Cannot send request to yourself" });
         }
 
-  
+        // 💡 প্রো-লেভেল অপটিমাইজেশন: ১টা কুয়েরিতেই সব চেক!
+        // A->B অথবা B->A এর মাঝে কোনো রেকর্ড আছে কিনা চেক করছি
         const existing = await pool.query(
             `SELECT * FROM connections WHERE 
-            ((sender_id=$1 AND receiver_id=$2) OR (sender_id=$2 AND receiver_id=$1)) AND status != 'accepted'`,
+            (sender_id=$1 AND receiver_id=$2) OR (sender_id=$2 AND receiver_id=$1)`,
             [sender_id, receiver_id]
         );
 
         if (existing.rows.length > 0) {
-            return res.status(400).json({ success: false, message: "Request has been sent ago" });
+            const currentStatus = existing.rows[0].status;
+
+            if (currentStatus === 'accepted') {
+                return res.status(400).json({ success: false, message: "You both are already connected" });
+            } else if (currentStatus === 'pending') {
+                return res.status(400).json({ success: false, message: "Request has already been sent or pending" });
+            }
         }
 
-						const friend = await pool.query(`
-SELECT * FROM connections WHERE (sender_id = $1 OR receiver_id = $1) AND status = 'accepted'
-`, [sender_id])
-
-					if (friend.rows.length > 0) {
-					res.status(400).json({
-									success: false,
-									massage: 'You both are already connected'
-
-});
-}
-
+   
         await pool.query(
             `INSERT INTO connections (sender_id, receiver_id) VALUES ($1, $2)`,
             [sender_id, receiver_id]
@@ -83,6 +79,7 @@ SELECT * FROM connections WHERE (sender_id = $1 OR receiver_id = $1) AND status 
         res.status(500).json({ success: false, error: err.message });
     }
 });
+
 
 // =========================
 // 2. FETCH PENDING REQUESTS
