@@ -148,7 +148,7 @@ app.get("/friends/:email", async (req, res) => {
            const email = req.params.email;
 
            const result = await pool.query(`
-                SELECT * FROM connections WHERE receiver_id = $1 AND status = 'accepted'` , [email]
+                SELECT * FROM connections WHERE (receiver_id = $1 OR sender_id = $1) AND status = 'accepted'` , [email]
 
                 );
            res.json({
