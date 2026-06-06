@@ -52,7 +52,7 @@ app.post("/connections", async (req, res) => {
   
         const existing = await pool.query(
             `SELECT * FROM connections WHERE 
-            (sender_id=$1 AND receiver_id=$2) OR (sender_id=$2 AND receiver_id=$1)`,
+            ((sender_id=$1 AND receiver_id=$2) OR (sender_id=$2 AND receiver_id=$1)) AND status != 'accepted'`,
             [sender_id, receiver_id]
         );
 
