@@ -46,10 +46,10 @@ app.post("/connections", async (req, res) => {
         }
 
         if (sender_id.toLowerCase() === receiver_id.toLowerCase()) {
-            return res.status(400).json({ success: false, message: "cannot send request to yourself" });
+            return res.status(400).json({ success: false, message: "It' your ID, Cannot send request to yourself" });
         }
 
-        // আগেই request আছে কিনা চেক করা (A->B or B->A)
+  
         const existing = await pool.query(
             `SELECT * FROM connections WHERE 
             (sender_id=$1 AND receiver_id=$2) OR (sender_id=$2 AND receiver_id=$1)`,
@@ -57,16 +57,27 @@ app.post("/connections", async (req, res) => {
         );
 
         if (existing.rows.length > 0) {
-            return res.status(400).json({ success: false, message: "request has been sent ago" });
+            return res.status(400).json({ success: false, message: "Request has been sent ago" });
         }
 
-        // নতুন রিকোয়েস্ট ইনসার্ট করা
+						const friend = await pool.query(`
+SELECT * FROM connections WHERE (sender_id = $1 OR receiver_id = $1) AND status = 'accepted'
+`, [sender_id])
+
+					if (friend.rows.length > 0) {
+					res.status(400).json({
+									success: false,
+									massage: 'You both are already connected'
+
+});
+}
+
         await pool.query(
             `INSERT INTO connections (sender_id, receiver_id) VALUES ($1, $2)`,
             [sender_id, receiver_id]
         );
 
-        res.json({ success: true, message: "Connection Request Sent" });
+        res.json({ success: true, message: "Request Sent" });
 
     } catch (err) {
         res.status(500).json({ success: false, error: err.message });
