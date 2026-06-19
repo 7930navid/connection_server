@@ -14,7 +14,7 @@ app.use(express.json());
 // =========================
 // DATABASE CONNECTION (Neon DB)
 // =========================
-// আপনার আগের কোড...
+// your previous code
 const pool = new Pool({
     connectionString: process.env.DATABASE_URL,
     ssl: {
@@ -23,7 +23,7 @@ const pool = new Pool({
 });
 
 // ==========================================
-// FIX: Neon DB ঘুমালে যেন সার্ভার ক্র্যাশ না করে
+// FIX: server won't crash by idle sleep
 // ==========================================
 pool.on('error', (err, client) => {
     console.error('⚠️ Neon DB idle connection error:', err.message);
@@ -49,8 +49,7 @@ app.post("/connections", async (req, res) => {
             return res.status(400).json({ success: false, message: "It's your ID, Cannot send request to yourself" });
         }
 
-        // 💡 প্রো-লেভেল অপটিমাইজেশন: ১টা কুয়েরিতেই সব চেক!
-        // A->B অথবা B->A এর মাঝে কোনো রেকর্ড আছে কিনা চেক করছি
+    
         const existing = await pool.query(
             `SELECT * FROM connections WHERE 
             (sender_id=$1 AND receiver_id=$2) OR (sender_id=$2 AND receiver_id=$1)`,
@@ -173,6 +172,12 @@ app.get("/friends/:email", async (req, res) => {
 
 });
 
+/* ============ FETCH ==============*/
+app.get("/get/:name", (req,res) => {
+    const name = req.params.name;
+    const message = `${name} server has been pinged`;
+    res.send(message);
+});
 
 
 // =========================
