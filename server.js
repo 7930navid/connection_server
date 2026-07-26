@@ -22,6 +22,10 @@ const pool = new Pool({
     }
 });
 
+// Idle database connection error handle করার লাইন
+pool.on('error', (err) => console.error('⚠️ DB Idle Error Handled:', err.message));
+
+
 // ==========================================
 // FIX: server won't crash by idle sleep
 // ==========================================
