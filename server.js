@@ -8,7 +8,19 @@ const app = express();
 // =========================
 // MIDDLEWARES
 // =========================
-app.use(cors());
+app.use(
+  cors({
+    origin: [
+      "https://7930navid.github.io",
+      "http://localhost:8080",
+      "https://nextalk-user-server.onrender.com",
+      "https://users-server-xyvg.onrender.com"
+    ],
+    methods: ["GET", "POST", "PUT", "DELETE"],
+    allowedHeaders: ["Content-Type", "Authorization"]
+  })
+);
+
 app.use(express.json());
 
 // =========================
