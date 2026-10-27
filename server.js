@@ -26,7 +26,6 @@ app.use(express.json());
 // =========================
 // DATABASE CONNECTION (Neon DB)
 // =========================
-// your previous code
 const pool = new Pool({
     connectionString: process.env.DATABASE_URL,
     ssl: {
@@ -34,16 +33,9 @@ const pool = new Pool({
     }
 });
 
-// Idle database connection error handle করার লাইন
-pool.on('error', (err) => console.error('⚠️ DB Idle Error Handled:', err.message));
-
-
-// ==========================================
-// FIX: server won't crash by idle sleep
-// ==========================================
+// Idle database connection error handle (একবার লিখলেই যথেষ্ট)
 pool.on('error', (err, client) => {
     console.error('⚠️ Neon DB idle connection error:', err.message);
-   
 });
 
 pool.connect()
@@ -65,7 +57,6 @@ app.post("/connections", async (req, res) => {
             return res.status(400).json({ success: false, message: "It's your ID, Cannot send request to yourself" });
         }
 
-    
         const existing = await pool.query(
             `SELECT * FROM connections WHERE 
             (sender_id=$1 AND receiver_id=$2) OR (sender_id=$2 AND receiver_id=$1)`,
@@ -82,7 +73,6 @@ app.post("/connections", async (req, res) => {
             }
         }
 
-   
         await pool.query(
             `INSERT INTO connections (sender_id, receiver_id) VALUES ($1, $2)`,
             [sender_id, receiver_id]
@@ -95,7 +85,6 @@ app.post("/connections", async (req, res) => {
     }
 });
 
-
 // =========================
 // 2. FETCH PENDING REQUESTS
 // =========================
@@ -103,7 +92,6 @@ app.get("/connections/:email", async (req, res) => {
     try {
         const email = req.params.email;
 
-        // শুধু pending রিকোয়েস্টগুলো ফেচ করবে
         const result = await pool.query(
             `SELECT * FROM connections 
             WHERE receiver_id = $1 AND status = 'pending'`,
@@ -164,37 +152,37 @@ app.delete("/connections/:id", async (req, res) => {
     }
 });
 
-//GET ℹ️ℹ️ FRIENDS TO BROWSER
-
+// =========================
+// 5. GET FRIENDS
+// =========================
 app.get("/friends/:email", async (req, res) => {
-        try{
-           const email = req.params.email;
+    try {
+        const email = req.params.email;
 
-           const result = await pool.query(`
-                SELECT * FROM connections WHERE (receiver_id = $1 OR sender_id = $1) AND status = 'accepted'` , [email]
-
-                );
-           res.json({
-                success: true,
-                data: result.rows
-                });
-        } catch(err) {
+        const result = await pool.query(
+            `SELECT * FROM connections WHERE (receiver_id = $1 OR sender_id = $1) AND status = 'accepted'`,
+            [email]
+        );
+        
+        res.json({
+            success: true,
+            data: result.rows
+        });
+    } catch(err) {
         console.error(err);
         res.status(500).json({
-                success: false,
-                message: 'Server error'
-                });
-        }
-
+            success: false,
+            message: 'Server error'
+        });
+    }
 });
 
-/* ============ FETCH ==============*/
-app.get("/get/:name", (req,res) => {
+/* ============ FETCH =============*/
+app.get("/get/:name", (req, res) => {
     const name = req.params.name;
     const message = `${name} server has been pinged`;
     res.send(message);
 });
-
 
 // =========================
 // SERVER START
